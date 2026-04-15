@@ -1,0 +1,203 @@
+---
+title: "ingestion and EDA"
+Author: "Jhonathan Urquilla"
+---
+
+# ----------------
+# Load Libraries
+# ----------------
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+# Load Data
+
+```{r}
+setwd("C:/Users/ubjho/Downloads")
+traffic_data <- read_csv("Traffic_Violations.csv")
+```
+
+# Pull up Dataset
+
+```{r}
+head(traffic_data)
+```
+
+# View all column names
+
+```{r}
+colnames(traffic_data)
+```
+
+# Check for unique violation descriptions
+
+```{r}
+unique(traffic_data$Description)
+```
+
+
+# ----------------------
+
+# Extracting Key Variables
+
+# ----------------------
+
+# Violation description
+
+```{r}
+violations <- traffic_data$Description
+```
+
+# Time of stop
+
+```{r}
+head(traffic_data$`Time Of Stop`)
+```
+
+# Driver gender
+
+```{r}
+driver_gender <- traffic_data$Gender
+```
+
+# State
+
+```{r}
+driver_state <- traffic_data$State
+```
+
+# -----------
+
+# Clean Data
+
+# -----------
+
+```{r}
+traffic_data$`Date Of Stop` <- mdy(traffic_data$`Date Of Stop`)
+traffic_data <- traffic_data[year(traffic_data$`Date Of Stop`) >= 2023, ]
+```
+
+# Extract hour from time
+
+```{r}
+traffic_data$Hour <- as.numeric(substr(traffic_data$`Time Of Stop`, 1, 2))
+```
+
+# Filter only Maryland drivers
+
+```{r}
+md_data <- traffic_data[traffic_data$State == "MD", ]
+```
+
+# Remove missing values
+
+```{r}
+md_data <- na.omit(md_data)
+```
+
+# -------------------
+
+# Create Data Frames
+
+# -------------------
+
+# Top violations
+
+```{r}
+top_counts <- table(md_data$Description)
+top_counts <- sort(top_counts, decreasing = TRUE)
+top_counts <- head(top_counts, 8)
+
+top_violations <- data.frame(
+  Description = substr(names(top_counts), 1, 30),  # Limit Description to first 15 characters
+  Count = as.numeric(top_counts)
+)
+```
+
+# Violations by hour
+
+```{r}
+hour_counts <- table(md_data$Hour)
+
+hour_data <- data.frame(
+  Hour = as.numeric(names(hour_counts)),
+  Violations = as.numeric(hour_counts)
+)
+```
+
+# Violations by gender
+
+```{r}
+gender_counts <- table(md_data$Gender)
+
+gender_data <- data.frame(
+  Gender = names(gender_counts),
+  Count = as.numeric(gender_counts)
+)
+```
+
+# ----------------
+
+# Visualizations
+
+# ----------------
+
+### Plot 1: Top Traffic Violations
+
+```{r}
+ggplot(top_violations,
+       aes(x = reorder(Description, Count),
+           y = Count,
+           fill = Description)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Most Common Traffic Violations in 2023 and Recent",
+       x = "Violation Type",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 6))
+```
+
+# 2023 and recent year violations falling under being under the influence in some sort of way appear most frequently, suggesting that intoxicated driving is one of the most common traffic safety issues in the dataset.
+
+### Plot 2: Violations by Hour
+
+```{r}
+ggplot(hour_data,
+       aes(x = Hour,
+           y = Violations)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Traffic Violations by Hour of Day",
+       x = "Hour of Day",
+       y = "Number of Violations") +
+  theme_minimal()
+```
+
+# The plot shows a sharp increase in violations starting at around 9 PM and continuing into the early morning hours, the highest number of violations being around 3-4 AM. This is a notable trend, as it’s the opposite of what we’d typically expect, with daytime hours (especially the morning and evening commute) generally having higher violation rates due to more vehicles on the road.
+
+### Plot 3: Violations by Gender
+
+```{r}
+ggplot(gender_data,
+       aes(x = Gender,
+           y = Count,
+           fill = Gender)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Traffic Violations by Driver Gender",
+       x = "Driver Gender",
+       y = "Count") +
+  theme_minimal()
+```
+
+# Male drivers appear more frequently in the violation records compared to female drivers. This difference may reflect differences in driving behavior or exposure to traffic.
+
+# -----------------
+
+# Overall Findings
+
+# -----------------
+
+# The analysis of traffic violations suggests that impaired driving, mainly related to driving under the influence, is a significant issue, especially during nighttime hours. The data reveals a noticeable peak in violations between 9 PM and 4 AM, with a sharp increase around 3-4 AM, which indicates that risky driving behaviors such as impaired driving, speeding, and reckless driving are more prevalent during these times when traffic is lighter and law enforcement may be less active. Interestingly, male drivers are more frequently involved in traffic violations compared to female drivers, reflecting broader trends of riskier driving behaviors associated with males, such as speeding or driving under the influence. The overall findings highlight the importance of targeted enforcement, particularly during the nighttime when violations appear to surge, and emphasize the need for proactive measures to address impaired driving. Further research could delve into the relationship between traffic volume and violations, investigate specific types of violations, and examine the influence of demographic factors on driving behavior.
