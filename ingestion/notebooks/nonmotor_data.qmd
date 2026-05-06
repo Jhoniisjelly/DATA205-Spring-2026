@@ -1,0 +1,176 @@
+---
+title: "Nonmotorists Dataset"
+format: html
+editor: visual
+Author: Jhonathan Urquilla
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(leaflet)
+```
+
+```{r}
+setwd("C:/Users/ubjho/Downloads")
+nonmotor_data <- read_csv("crash_nonmotorists.csv")
+```
+
+```{r}
+head(nonmotor_data)
+```
+
+```{r}
+colnames(nonmotor_data)
+```
+
+### Time format
+
+```{r}
+# Extract Year (from text)
+nonmotor_data$Year <- as.numeric(substr(nonmotor_data$'Crash Date/Time', 7, 10))
+```
+
+```{r}
+# Extract Month
+nonmotor_data$Month <- as.numeric(substr(nonmotor_data$'Crash Date/Time', 1, 2))
+```
+
+```{r}
+# Extract Hour (12-hour format)
+nonmotor_hour <- as.numeric(substr(nonmotor_data$'Crash Date/Time', 12, 13))
+```
+
+```{r}
+# Extract AM/PM
+am_pm <- substr(nonmotor_data$'Crash Date/Time', 21, 22)
+```
+
+```{r}
+# Convert to 24-hour format
+nonmotor_hour[am_pm == "PM" & nonmotor_hour != 12] <- nonmotor_hour[am_pm == "PM" & nonmotor_hour != 12] + 12
+nonmotor_hour[am_pm == "AM" & nonmotor_hour == 12] <- 0
+```
+
+```{r}
+nonmotor_data$Hour <- nonmotor_hour
+```
+
+```{r}
+nonmotor_data
+```
+
+### Removing columns not in use
+
+```{r}
+nonmotor_data$'Report Number' <- NULL
+nonmotor_data$'Local Case Number' <- NULL
+nonmotor_data$'Agency Name' <- NULL
+nonmotor_data$'ACRS Report Type' <- NULL
+nonmotor_data$'Route Type' <- NULL
+nonmotor_data$'Cross-Street Name' <- NULL
+nonmotor_data$'Off-Road Description' <- NULL
+nonmotor_data$'Municipality' <- NULL
+nonmotor_data$'Non-Motorist Substance Abuse' <- NULL
+nonmotor_data$'Person ID' <- NULL
+nonmotor_data$'Location' <- NULL
+nonmotor_data$'Collision Type' <- NULL
+nonmotor_data$'Traffic Control' <- NULL
+```
+
+```{r}
+nonmotor_data
+```
+
+```{r}
+unique(nonmotor_data$'Weather')
+```
+
+
+### Clean Weather
+
+```{r}
+nonmotor_data$Weather <- ifelse(nonmotor_data$Weather %in% c("RAINING", "Rain", "Freezing Rain Or Freezing Drizzle"), "Rain",
+                    ifelse(nonmotor_data$Weather %in% c("snow", "SNOW","Blowing Snow", "SLEET", "WINTRY MIX", "BLOWING SNOW", "Sleet Or Hail"), "Snow",
+                    ifelse(nonmotor_data$Weather %in% c("Severe Crosswinds", "SEVERE WINDS"), "Windy",
+                    ifelse(nonmotor_data$Weather %in% c("BLOWING SAND, SOIL, DIRT","Cloudy", "Fog, Smog, Smoke", "FOGGY", "CLOUDY", "Blowing Sand, Soil, Dirt"), "Cloudy",
+                    ifelse(nonmotor_data$Weather %in% c("clear", "CLEAR"), "Clear", nonmotor_data$Weather)))))
+
+nonmotor_data <- filter(nonmotor_data, 
+                  !is.na(Weather), Weather != "", 
+                  !Weather %in% c("Other", "Unknown", "UNKNOWN", "OTHER", "N/A"))
+
+```
+
+```{r}
+unique(nonmotor_data$'Weather')
+```
+
+### Clean Light Level
+
+```{r}
+nonmotor_data$Light <- gsub(" ", "", nonmotor_data$Light)
+```
+
+```{r}
+nonmotor_data$Light <- ifelse(nonmotor_data$Light %in% c("DARK--UNKNOWNLIGHTING", "Dark-UnknownLighting", "Dark-NotLighted", "DARKNOLIGHTS"), "Dark",
+                    ifelse(nonmotor_data$Light %in% c("Daylight", "DAYLIGHT"), "Daylight",
+                    ifelse(nonmotor_data$Light %in% c("Dark-Lighted", "DARKLIGHTSON", "DUSK", "Dusk", "Dawn", "DAWN"), "Medium", nonmotor_data$Light)))
+
+nonmotor_data <- filter(nonmotor_data, 
+                  !is.na(Light), Light != "", 
+                  !Light %in% c("Other", "Unknown", "UNKNOWN", "OTHER", "N/A"))
+
+```
+
+```{r}
+unique(nonmotor_data$Light)
+```
+
+### Clean Injury Severity
+
+```{r}
+nonmotor_data$'Injury Severity' <- ifelse(nonmotor_data$'Injury Severity' %in% c("No Apparent Injury", "NO APPARENT INJURY"), "No Apparent Injury",
+                                       
+                    ifelse(nonmotor_data$'Injury Severity' %in% c("Possible Injury", "POSSIBLE INJURY", "SUSPECTED MINOR INJURY", "Suspected Minor Injury"), "Possible Minor Injury",
+                           
+                    ifelse(nonmotor_data$'Injury Severity' %in% c("Suspected Serious Injury", "SUSPECTED SERIOUS INJURY"), "Suspected Serious Injury",
+                           
+                    ifelse(nonmotor_data$'Injury Severity' %in% c("FATAL INJURY", "Fatal Injury"), "Fatal Injury", nonmotor_data$'Injury Severity'))))
+
+nonmotor_data <- filter(nonmotor_data, 
+                  !is.na('Injury Severity'), 'Injury Severity' != "",
+                  !'Injury Severity' %in% c("Other", "Unknown", "UNKNOWN", "OTHER"))
+```
+
+```{r}
+unique(nonmotor_data$'Injury Severity')
+```
+
+### Filter 2022 to recent
+
+```{r}
+# Filter 2022+
+recent_nonmotor <- nonmotor_data[nonmotor_data$Year >= 2022, ]
+```
+
+### Remove missing/invalid coordinates
+
+```{r}
+recent_nonmotor <- recent_nonmotor[
+  !is.na(recent_nonmotor$Latitude) &
+  !is.na(recent_nonmotor$Longitude) &
+  recent_nonmotor$Latitude != 0 &
+  recent_nonmotor$Longitude != 0,
+]
+```
+
+```{r}
+recent_nonmotor
+```
+
+```{r}
+write_csv(recent_nonmotor, "clean_nonmotor_JUrquilla.csv")
+```
