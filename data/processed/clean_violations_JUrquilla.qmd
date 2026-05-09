@@ -1,0 +1,104 @@
+---
+title: "Nonmotorists Dataset"
+format: html
+editor: visual
+Author: Jhonathan Urquilla
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(leaflet)
+```
+
+```{r}
+setwd("C:/Users/ubjho/Downloads")
+violation_data <- read_csv("traffic_violations.csv")
+```
+
+```{r}
+head(violation_data)
+```
+
+```{r}
+colnames(violation_data)
+```
+
+### Time format
+
+```{r}
+# Extract Year (from text)
+violation_data$Year <- as.numeric(substr(violation_data$'Date Of Stop', 7, 10))
+```
+
+```{r}
+# Extract Month
+violation_data$Month <- as.numeric(substr(violation_data$'Date Of Stop', 1, 2))
+```
+
+```{r}
+# Extract Hour (and is 24hr formatted already)
+violation_data$Hour <- as.numeric(substr(violation_data$'Time Of Stop', 1, 2))
+```
+
+```{r}
+violation_data
+```
+
+### Removing columns not in use
+
+```{r}
+violation_data$'SeqID' <- NULL
+violation_data$'Agency' <- NULL
+violation_data$'SubAgency' <- NULL
+violation_data$'Location' <- NULL
+violation_data$'Commercial License' <- NULL
+violation_data$'HAZMAT' <- NULL
+violation_data$'Commercial Vehicle' <- NULL
+violation_data$'Search Conducted' <- NULL
+violation_data$'Search Disposition' <- NULL
+violation_data$'Search Outcome' <- NULL
+violation_data$'Search Reason' <- NULL
+violation_data$'Search Reason For Stop' <- NULL
+violation_data$'Search Type' <- NULL
+violation_data$'Search Arrest Reason' <- NULL
+violation_data$'VehicleType' <- NULL
+violation_data$'Charge' <- NULL
+violation_data$'Article' <- NULL
+```
+
+```{r}
+violation_data
+```
+
+```{r}
+unique(violation_data$'Arrest Type')
+```
+
+### Filter 2022 to recent
+
+```{r}
+# Filter 2022+
+recent_Violation <- violation_data[violation_data$Year >= 2022, ]
+```
+
+### Remove missing/invalid coordinates
+
+```{r}
+recent_Violation <- recent_Violation[
+  !is.na(recent_Violation$Latitude) &
+  !is.na(recent_Violation$Longitude) &
+  recent_Violation$Latitude != 0 &
+  recent_Violation$Longitude != 0,
+]
+```
+
+```{r}
+recent_Violation
+```
+
+```{r}
+write_csv(recent_violation, "clean_Violation_JUrquilla.csv")
+```
