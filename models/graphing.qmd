@@ -1,0 +1,459 @@
+---
+title: "Crash graphs"
+author: "Jhonathan"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(leaflet)
+library(plotly)
+```
+
+```{r}
+crash_data <- read_csv("https://media.githubusercontent.com/media/Jhoniisjelly/DATA205-Spring-2026/refs/heads/main/data/processed/clean_crash_JUrquilla.csv")
+
+nonmotor <- read_csv("https://media.githubusercontent.com/media/Jhoniisjelly/DATA205-Spring-2026/refs/heads/main/data/processed/clean_nonmotor_JUrquilla.csv")
+
+violation <- read_csv("https://media.githubusercontent.com/media/Jhoniisjelly/DATA205-Spring-2026/refs/heads/main/data/processed/clean_violation_JUrquilla.csv")
+```
+
+# ----------------
+# Crash Data Graphs
+# ----------------
+
+```{r}
+head(crash_data)
+```
+
+```{r}
+unique(crash_data$'Driver At Fault')
+```
+
+# -How many people are at fault for crashes?
+
+```{r}
+ggplot(crash_data, aes(x = Month)) +
+    geom_bar(aes(fill = crash_data$'Driver At Fault'), 
+           stat = "count", 
+           position = "dodge") +
+  
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(title = "Crashes by Fault",
+       x = "Month",
+       y = "Number of Crashes",
+       fill = "Driver At Fault?") +
+  theme_minimal()
+```
+
+# -How different are the Injury severity?
+
+```{r}
+Injury_Severity_totals <- ggplot(crash_data,
+             aes(x = `Injury Severity`, fill = `Injury Severity`)) +
+  geom_bar() +
+  labs(title = "Crash Injury Severity",
+       x = "Severity",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x =
+          element_text(angle = 45,
+                       hjust = 1))
+
+ggplotly(Injury_Severity_totals, tooltip = c("x", "count"))
+```
+
+```{r}
+length(which(crash_data$'Injury Severity' == "Fatal Injury"))
+```
+
+# -Crash occurrences by month throughout the years
+
+```{r}
+unique_crashes <- crash_data[!duplicated(crash_data$'Local Case Number'), ]
+## the reason I am removing Local Case numbers is because they repeat. This means that not only was the person who wasnt at fault noted in the data but the person who was at fault was also noted. Removing duplicate Local case numbers give me an accurate number of total crashes reported opposed to the amount of people involved in crashes reported.
+```
+
+```{r}
+ggplot(unique_crashes, aes(x = Month, group = factor(Year), color = factor(Year))) +
+  geom_line(stat = "count") +
+  geom_point(stat = "count") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(title = "Crashes by Month (2022–Present)",
+       x = "Month",
+       y = "Crashes",
+       color = "Year") +
+  theme_minimal()
+```
+
+```{r}
+### On the graph above you can see that there are 2 main months where there is an increase of accidents. May is the first time this jump occurs (not including 2026 as we are currently in the month). The second time we do see a jump in accidents is in October. During this month it so far seems that from all of the 4 previous completed years this is the peak month of crashes happening.
+
+### There also tends to be a slight decline in accidents from November-February and also June-August. 
+```
+
+# -Crash occurrences by hours throughout the years
+
+```{r}
+crash_hour <- ggplot(crash_data,
+             aes(x = Hour,
+                 group = factor(Year),
+                 color = factor(Year))) +
+  geom_line(stat = "count",
+            linewidth = 1.2) +
+  geom_point(stat = "count") +
+  labs(title = "Crashes by Hour",
+       x = "Hour of Day",
+       y = "Crash Count",
+       color = "Year") +
+  theme_minimal()
+
+ggplotly(crash_hour, tooltip = c("x", "count"))
+```
+
+# -Weather conditions during crashes?
+
+```{r}
+crash_weather <- ggplot(crash_data,
+              aes(x = Weather)) +
+  geom_bar(fill = "purple") +
+  labs(title = "Crashes by Weather Condition",
+       x = "Weather",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x =
+          element_text(angle = 45,
+                       hjust = 1))
+
+ggplotly(crash_weather)
+```
+
+# -Weather conditions thoughout the years
+
+```{r}
+weather_data <- crash_data[
+  !is.na(crash_data$Weather) &
+  crash_data$Weather != "UNKNOWN",
+]
+
+weather_years <- ggplot(weather_data,
+             aes(x = Weather,
+                 fill = factor(Year))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Crash Weather Conditions by Year",
+       x = "Weather Condition",
+       y = "Crash Count",
+       fill = "Year") +
+  theme_minimal() +
+  theme(axis.text.x =
+          element_text(angle = 45,
+                       hjust = 1))
+
+ggplotly(weather_years)
+```
+
+# ----------------
+# Violations Data Graphs
+# ----------------
+
+# -Occurrences by Months throughout the years
+
+```{r}
+ggplot(violation, aes(x = Month, group = factor(Year), color = factor(Year))) +
+  geom_line(stat = "count") +
+  geom_point(stat = "count") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(title = "Violations by Month (2022–Present)",
+       x = "Month",
+       y = "violations",
+       color = "Year") +
+  theme_minimal()
+```
+
+```{r}
+# This code is below is combining the total violations that occurred during an event. SeqID repeats meaning the violation is related to the same occurrence. This will help to see the total number of citations received for an event while also combining the description of each citation.   
+
+
+# Combining descriptions
+
+combined_desc <- aggregate(
+  Description ~ SeqID,
+  data = violation,
+  FUN = function(x)
+    paste(unique(x),
+          collapse = ", ")
+)
+
+colnames(combined_desc)[2] <- "Combined_Descriptions"
+```
+
+```{r}
+# Count total citations
+
+citation_count <- aggregate(
+  Description ~ SeqID,
+  data = violation,
+  FUN = length
+)
+
+colnames(citation_count)[2] <- "Citation Count"
+```
+
+```{r}
+# Combining Gender
+
+combined_Gender <- aggregate(
+  Gender ~ SeqID,
+  data = violation,
+  FUN = function(x)
+    paste(unique(x),
+          collapse = ", ")
+)
+
+colnames(combined_Gender)[2] <- "Combined_Gender"
+```
+
+```{r}
+# Combining Race
+
+combined_race <- aggregate(
+  Race ~ SeqID,
+  data = violation,
+  FUN = function(x)
+    paste(unique(x),
+          collapse = ", ")
+)
+
+colnames(combined_race)[2] <- "Combined_Race"
+```
+
+```{r}
+# to keep FIRST row of each SEQID(as these SEQID are for
+# the same occurrence with multiple violations)the code
+# below was used to combine information together
+
+final_violations <- violation[
+  !duplicated(violation$SeqID),
+]
+#---------------------
+# MERGE COMBINED DESCRIPTIONS
+final_violations <- merge(
+  final_violations,
+  combined_desc,
+  by = "SeqID"
+)
+#---------------------
+# MERGE Citations counts
+final_violations <- merge(
+  final_violations,
+  citation_count,
+  by = "SeqID"
+)
+# --------------------
+# MERGE Gender
+final_violations <- merge(
+  final_violations,
+  combined_Gender,
+  by = "SeqID"
+)
+#---------------------
+# MERGE Race
+final_violations <- merge(
+  final_violations,
+  combined_race,
+  by = "SeqID"
+)
+```
+
+```{r}
+final_violations$'Description' <- NULL
+final_violations$'State' <- NULL
+final_violations$'Make' <- NULL
+final_violations$'Model' <- NULL
+final_violations$'Color' <- NULL
+final_violations$'Gender' <- NULL
+final_violations$'Race' <- NULL
+```
+
+```{r}
+colnames(final_violations)[colnames(final_violations) == "Combined_Race"] <- "Race"
+colnames(final_violations)[colnames(final_violations) == "Combined_Descriptions"] <- "Description"
+colnames(final_violations)[colnames(final_violations) == "Combined_Gender"] <- "Gender"
+```
+
+
+```{r}
+sort(final_violations$'Citation Count', decreasing = TRUE)
+```
+
+```{r}
+final_violations
+```
+
+# -Occurrences by Gender
+
+```{r}
+Gender_violations <- ggplot(final_violations,
+             aes(x = Gender, fill = Gender)) +
+  geom_bar() +
+  labs(title = "Gender Violation Count",
+       x = "Gender",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x =
+          element_text(angle = 45,
+                       hjust = 1))
+
+ggplotly(Gender_violations, tooltip = c("x", "count"))
+
+```
+
+# -Occurrences by Race
+
+```{r}
+Race_violations <- ggplot(final_violations,
+             aes(x = Race, fill = Race)) +
+  geom_bar() +
+  labs(title = "Race Violation Count",
+       x = "Race",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x =
+          element_text(angle = 45,
+                       hjust = 1))
+
+ggplotly(Race_violations, tooltip = c("x", "count"))
+```
+
+# ----------------
+# Non-Motor Data Graphs
+# ----------------
+
+# -Non-motorist occurrences by month throughout the years
+
+```{r}
+ggplot(nonmotor, aes(x = Month, group = factor(Year), color = factor(Year))) +
+  geom_line(stat = "count") +
+  geom_point(stat = "count") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(title = "Non-Motor by Month (2022–Present)",
+       x = "Month",
+       y = "Non-Motor Count",
+       color = "Year") +
+  theme_minimal()
+```
+
+# -Non-motorist injury severity comparison?
+
+```{r}
+non_motor_fault <- ggplot(nonmotor,
+              aes(x = Month,
+                  fill = `Injury Severity`)) +
+  geom_bar(position = "dodge") +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = month.abb
+  ) +
+  labs(title = "Non-Motorist Injury Severity by Month",
+       x = "Month",
+       y = "Non-Motor Count",
+       fill = "Injury Severity") +
+  theme_minimal()
+
+ggplotly(non_motor_fault)
+```
+
+# -How many non-motorists were at fault?
+
+```{r}
+fault_data <- nonmotor[
+  !is.na(nonmotor$`At Fault`) &
+  nonmotor$`At Fault` != "Unknown",
+]
+```
+
+```{r}
+nonmotor_fault_time <- ggplot(fault_data,
+              aes(x = Month,
+                  group = factor(Year),
+                  color = factor(Year))) +
+  geom_line(stat = "count",
+            size = 1.2) +
+  geom_point(stat = "count") +
+  facet_grid(`At Fault` ~ .) +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = month.abb
+  ) +
+  labs(title = "Non-Motorist At-Fault Crashes by Month and Year",
+       x = "Month",
+       y = "Non-Motorist Count",
+       color = "Year") +
+  theme_minimal()
+
+ggplotly(nonmotor_fault_time, tooltip = c("x", "count"))
+```
+
+
+
+```{r}
+crash_hour <- as.data.frame(
+  table(crash_data$Hour)
+)
+
+colnames(crash_hour) <- c(
+  "Hour",
+  "Count"
+)
+
+crash_hour$Type <- "Crashes"
+
+viol_hour <- as.data.frame(
+  table(final_violations$Hour)
+)
+
+colnames(viol_hour) <- c(
+  "Hour",
+  "Count"
+)
+
+viol_hour$Type <- "Violations"
+
+hour_compare <- rbind(
+  crash_hour,
+  viol_hour
+)
+
+crash_vs_violation <- ggplot(hour_compare,
+              aes(x = as.numeric(as.character(Hour)),
+                  y = Count,
+                  color = Type)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Crashes vs Violations by Hour",
+       x = "Hour of Day",
+       y = "Count",
+       color = "Dataset") +
+  theme_minimal()
+
+ggplotly(crash_vs_violation)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
